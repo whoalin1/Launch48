@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: "%s — Launch48",
   },
   description:
-    "Send a brief. Pay securely through Polar. Get one live marketing landing page in 48 hours for $349, or receive a full refund.",
+    "Send a brief. Pay $349 in crypto through OxaPay. Get one live marketing landing page in 48 hours, or receive a full refund.",
   icons: { icon: favicon },
 };
 

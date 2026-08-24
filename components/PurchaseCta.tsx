@@ -16,7 +16,7 @@ export function PurchaseCta({
         type="button"
         disabled
         aria-disabled="true"
-        title="Polar payments have not been configured for this deployment."
+        title="OxaPay payments have not been configured for this deployment."
       >
         Payments not configured
       </button>
@@ -25,7 +25,7 @@ export function PurchaseCta({
 
   return (
     <Link className={className} href="/brief">
-      Pay $349
+      Pay $349 in crypto
     </Link>
   );
 }

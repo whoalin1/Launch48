@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-const POLAR_METADATA_MAX = 500;
+const BRIEF_FIELD_MAX = 500;
 
-const requiredText = (label: string, max = POLAR_METADATA_MAX) =>
+const requiredText = (label: string, max = BRIEF_FIELD_MAX) =>
   z
     .string({ error: `${label} is required` })
     .trim()
@@ -42,7 +42,7 @@ const optionalDomain = z.preprocess(
   z
     .string({ error: "Domain must be text" })
     .trim()
-    .max(POLAR_METADATA_MAX, "Domain must be 500 characters or fewer")
+    .max(BRIEF_FIELD_MAX, "Domain must be 500 characters or fewer")
     .refine(isDomainOrHttpUrl, "Enter a valid domain or URL")
     .optional(),
 );
@@ -70,61 +70,6 @@ export const briefSchema = z
   .strict();
 
 export type Brief = z.infer<typeof briefSchema>;
-
-export const BRIEF_METADATA_KEYS = {
-  schema: "launch48_schema",
-  businessName: "business_name",
-  pitch: "pitch",
-  audience: "audience",
-  tone: "tone",
-  referenceUrls: "reference_urls",
-  colors: "colors",
-  mustHaveSections: "must_have_sections",
-  contactEmail: "contact_email",
-  domain: "domain",
-} as const;
-
-export type PolarBriefMetadata = Record<string, string>;
-
-export function toPolarMetadata(brief: Brief): PolarBriefMetadata {
-  return {
-    [BRIEF_METADATA_KEYS.schema]: "1",
-    [BRIEF_METADATA_KEYS.businessName]: brief.businessName,
-    [BRIEF_METADATA_KEYS.pitch]: brief.pitch,
-    [BRIEF_METADATA_KEYS.audience]: brief.audience,
-    [BRIEF_METADATA_KEYS.tone]: brief.tone,
-    [BRIEF_METADATA_KEYS.referenceUrls]: brief.referenceUrls,
-    [BRIEF_METADATA_KEYS.colors]: brief.colors,
-    [BRIEF_METADATA_KEYS.mustHaveSections]: brief.mustHaveSections,
-    [BRIEF_METADATA_KEYS.contactEmail]: brief.contactEmail,
-    [BRIEF_METADATA_KEYS.domain]: brief.domain ?? "",
-  };
-}
-
-export function fromPolarMetadata(metadata: unknown): Brief | null {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return null;
-  }
-
-  const source = metadata as Record<string, unknown>;
-  if (source[BRIEF_METADATA_KEYS.schema] !== "1") {
-    return null;
-  }
-
-  const parsed = briefSchema.safeParse({
-    businessName: source[BRIEF_METADATA_KEYS.businessName],
-    pitch: source[BRIEF_METADATA_KEYS.pitch],
-    audience: source[BRIEF_METADATA_KEYS.audience],
-    tone: source[BRIEF_METADATA_KEYS.tone],
-    referenceUrls: source[BRIEF_METADATA_KEYS.referenceUrls],
-    colors: source[BRIEF_METADATA_KEYS.colors],
-    mustHaveSections: source[BRIEF_METADATA_KEYS.mustHaveSections],
-    contactEmail: source[BRIEF_METADATA_KEYS.contactEmail],
-    domain: source[BRIEF_METADATA_KEYS.domain],
-  });
-
-  return parsed.success ? parsed.data : null;
-}
 
 export function briefFieldErrors(
   error: z.ZodError,

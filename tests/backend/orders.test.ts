@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { briefSchema, toPolarMetadata } from "../../lib/brief";
+import { briefSchema } from "../../lib/brief";
 import {
   buildPaidOrderRecord,
+  decryptCheckoutState,
   formatOrderIssueBody,
   formatOrderIssueTitle,
+  formatPendingIssueBody,
   getOrderStorageConfig,
-  launch48OrderMarker,
+  type StoredOrderRecord,
 } from "../../lib/orders";
 
+const stateSecret = "a-strong-checkout-state-secret-at-least-32-chars";
 const brief = briefSchema.parse({
   businessName: "Fieldnote Coffee",
   pitch: "Small-lot coffee roasted with restraint.",
@@ -21,82 +24,85 @@ const brief = briefSchema.parse({
   domain: "fieldnote.example",
 });
 
-function makeRecord() {
+const stored: StoredOrderRecord = {
+  orderId: "l48-db-0123456789abcdef0123456789abcdef",
+  trackId: "184747701",
+  status: "pending",
+  amountCents: 34_900,
+  currency: "usd",
+  createdAt: "2026-08-24T18:00:00.000Z",
+  paidAt: null,
+  paymentEmail: null,
+  brief,
+};
+
+function makePaidRecord() {
   return buildPaidOrderRecord({
-    order: {
-      id: "order_123",
-      checkoutId: "checkout_123",
-      productId: "product_123",
+    stored,
+    payment: {
+      orderId: stored.orderId,
+      trackId: stored.trackId as string,
       status: "paid",
-      paid: true,
-      subtotalAmount: 34_900,
-      discountAmount: 0,
-      totalAmount: 36_645,
+      amountCents: 34_900,
       currency: "USD",
-      metadata: toPolarMetadata(brief),
-      customer: { email: "billing@example.com" },
+      paymentEmail: "billing@example.com",
+      verifiedAt: "2026-08-24T18:05:00.000Z",
     },
-    expectedProductId: "product_123",
-    webhookId: "webhook_123",
-    paidAt: "2026-08-24T18:00:00.000Z",
   });
 }
 
-describe("paid order extraction", () => {
-  it("extracts payment fields and the full brief", () => {
-    const record = makeRecord();
-    expect(record).toMatchObject({
-      checkoutId: "checkout_123",
-      polarOrderId: "order_123",
-      productId: "product_123",
+describe("OxaPay order extraction", () => {
+  it("promotes a matching pending brief into a paid record", () => {
+    expect(makePaidRecord()).toMatchObject({
+      orderId: stored.orderId,
+      trackId: "184747701",
       status: "paid",
-      subtotalAmount: 34_900,
-      totalAmount: 36_645,
+      amountCents: 34_900,
       currency: "usd",
+      paymentEmail: "billing@example.com",
       brief,
     });
   });
 
-  it("rejects unpaid, discounted, wrong-product, and malformed-brief orders", () => {
+  it("rejects wrong amount, currency, order, and track identities", () => {
     const base = {
-      id: "order_123",
-      checkoutId: "checkout_123",
-      productId: "product_123",
-      status: "paid",
-      paid: true,
-      subtotalAmount: 34_900,
-      discountAmount: 0,
-      totalAmount: 34_900,
+      orderId: stored.orderId,
+      trackId: stored.trackId as string,
+      status: "paid" as const,
+      amountCents: 34_900,
       currency: "usd",
-      metadata: toPolarMetadata(brief),
-      customer: {},
+      paymentEmail: null,
+      verifiedAt: new Date(),
     };
-    const build = (order: typeof base) =>
-      buildPaidOrderRecord({
-        order,
-        expectedProductId: "product_123",
-        webhookId: "webhook_123",
-        paidAt: new Date(),
-      });
+    const build = (payment: typeof base) =>
+      buildPaidOrderRecord({ stored, payment });
 
-    expect(() => build({ ...base, paid: false })).toThrow();
-    expect(() => build({ ...base, discountAmount: 1 })).toThrow();
-    expect(() => build({ ...base, productId: "another_product" })).toThrow();
-    expect(() => build({ ...base, metadata: {} })).toThrow();
+    expect(() => build({ ...base, amountCents: 34_899 })).toThrow();
+    expect(() => build({ ...base, currency: "eur" })).toThrow();
+    expect(() => build({ ...base, orderId: "l48-db-ffffffffffffffffffffffffffffffff" })).toThrow();
+    expect(() => build({ ...base, trackId: "999" })).toThrow();
   });
 });
 
-describe("order issue formatting", () => {
-  it("uses the required title and an idempotency marker", () => {
-    const record = makeRecord();
-    expect(formatOrderIssueTitle(record)).toBe("Order: Fieldnote Coffee");
-    expect(formatOrderIssueBody(record)).toContain(
-      launch48OrderMarker("checkout_123"),
-    );
+describe("encrypted GitHub fallback state", () => {
+  it("does not expose an abandoned brief and round-trips with AES-GCM", () => {
+    const body = formatPendingIssueBody(stored, stateSecret);
+    for (const privateValue of [
+      brief.businessName,
+      brief.pitch,
+      brief.contactEmail,
+      brief.referenceUrls,
+    ]) {
+      expect(body).not.toContain(privateValue);
+    }
+    expect(decryptCheckoutState(body, stateSecret)).toEqual(stored);
+    expect(() => decryptCheckoutState(body, `${stateSecret}!wrong`)).toThrow();
   });
 
-  it("includes all brief and payment fields and HTML-escapes input", () => {
-    const body = formatOrderIssueBody(makeRecord());
+  it("reveals the full brief only in the verified paid issue", () => {
+    const record = makePaidRecord();
+    const body = formatOrderIssueBody(record, stateSecret);
+    expect(formatOrderIssueTitle(record)).toBe("Order: Fieldnote Coffee");
     for (const value of [
       brief.businessName,
       brief.pitch,
@@ -106,39 +112,45 @@ describe("order issue formatting", () => {
       brief.mustHaveSections,
       brief.contactEmail,
       brief.domain as string,
-      "checkout_123",
-      "order_123",
+      stored.orderId,
+      stored.trackId as string,
       "USD 349.00",
-      "USD 366.45",
     ]) {
       expect(body).toContain(value);
     }
     expect(body).not.toContain("<script>");
     expect(body).toContain("&lt;script&gt;");
-  });
-
-  it("does not format secrets into the issue body", () => {
-    const body = formatOrderIssueBody(makeRecord());
-    expect(body).not.toContain("polar_access_secret");
-    expect(body).not.toContain("github_token_secret");
+    expect(body).not.toContain(stateSecret);
   });
 });
 
 describe("order storage selection", () => {
-  it("prefers Postgres, then the narrow GitHub token", () => {
+  it("prefers Postgres and requires encryption for GitHub fallback", () => {
     expect(
       getOrderStorageConfig({
         DATABASE_URL: "postgres://db",
         GITHUB_ISSUES_TOKEN: "issues",
-        GITHUB_TOKEN: "general",
+        CHECKOUT_STATE_SECRET: stateSecret,
       }),
     ).toEqual({ kind: "postgres", databaseUrl: "postgres://db" });
     expect(
       getOrderStorageConfig({
         GITHUB_ISSUES_TOKEN: "issues",
-        GITHUB_TOKEN: "general",
+        CHECKOUT_STATE_SECRET: stateSecret,
       }),
-    ).toEqual({ kind: "github", token: "issues" });
-    expect(getOrderStorageConfig({})).toBeNull();
+    ).toEqual({ kind: "github", token: "issues", stateSecret });
+    expect(getOrderStorageConfig({ GITHUB_ISSUES_TOKEN: "issues" })).toBeNull();
+    expect(
+      getOrderStorageConfig({
+        GITHUB_TOKEN: "general-token-is-not-accepted",
+        CHECKOUT_STATE_SECRET: stateSecret,
+      }),
+    ).toBeNull();
+    expect(
+      getOrderStorageConfig({
+        GITHUB_ISSUES_TOKEN: "issues",
+        CHECKOUT_STATE_SECRET: "too-short",
+      }),
+    ).toBeNull();
   });
 });

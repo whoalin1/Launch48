@@ -1,59 +1,52 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  getPolarConfig,
-  inspectPolarConfig,
-  isPolarConfigured,
+  getOxaPayConfig,
+  inspectOxaPayConfig,
+  isOxaPayConfigured,
   PaymentsConfigurationError,
 } from "../../lib/config";
 
 const configuredEnv = {
-  POLAR_ACCESS_TOKEN: "polar_token",
-  POLAR_PRODUCT_ID: "product_123",
-  POLAR_WEBHOOK_SECRET: "webhook_secret",
-  NEXT_PUBLIC_POLAR_SERVER: "sandbox",
+  OXAPAY_MERCHANT_API_KEY: "merchant_key",
+  OXAPAY_SANDBOX: "true",
 };
 
-describe("Polar configuration", () => {
-  it("accepts sandbox and production explicitly", () => {
-    expect(getPolarConfig(configuredEnv).server).toBe("sandbox");
+describe("OxaPay configuration", () => {
+  it("accepts explicit sandbox and production modes", () => {
+    expect(getOxaPayConfig(configuredEnv)).toEqual({
+      merchantApiKey: "merchant_key",
+      sandbox: true,
+    });
     expect(
-      getPolarConfig({
-        ...configuredEnv,
-        NEXT_PUBLIC_POLAR_SERVER: "production",
-      }).server,
-    ).toBe("production");
+      getOxaPayConfig({ ...configuredEnv, OXAPAY_SANDBOX: "false" }).sandbox,
+    ).toBe(false);
   });
 
-  it.each([
-    "POLAR_ACCESS_TOKEN",
-    "POLAR_PRODUCT_ID",
-    "POLAR_WEBHOOK_SECRET",
-    "NEXT_PUBLIC_POLAR_SERVER",
-  ])("reports missing or blank %s without throwing at inspection", (key) => {
-    const env = { ...configuredEnv, [key]: "  " };
-    const result = inspectPolarConfig(env);
-    expect(result.configured).toBe(false);
-    expect(result.problems).toContain(`Missing ${key}`);
-    expect(isPolarConfigured(env)).toBe(false);
+  it.each(["OXAPAY_MERCHANT_API_KEY", "OXAPAY_SANDBOX"])(
+    "reports missing or blank %s without throwing at inspection",
+    (key) => {
+      const env = { ...configuredEnv, [key]: "  " };
+      const result = inspectOxaPayConfig(env);
+      expect(result.configured).toBe(false);
+      expect(result.problems).toContain(`Missing ${key}`);
+      expect(isOxaPayConfigured(env)).toBe(false);
+    },
+  );
+
+  it("rejects non-boolean sandbox values", () => {
+    const env = { ...configuredEnv, OXAPAY_SANDBOX: "production" };
+    expect(inspectOxaPayConfig(env)).toMatchObject({ configured: false });
+    expect(() => getOxaPayConfig(env)).toThrow(PaymentsConfigurationError);
   });
 
-  it("rejects an unknown Polar server", () => {
-    const env = {
-      ...configuredEnv,
-      NEXT_PUBLIC_POLAR_SERVER: "staging",
-    };
-    expect(inspectPolarConfig(env)).toMatchObject({ configured: false });
-    expect(() => getPolarConfig(env)).toThrow(PaymentsConfigurationError);
-  });
-
-  it("trims environment values and does not cache them", () => {
+  it("trims values and does not cache configuration", () => {
     expect(
-      getPolarConfig({
-        ...configuredEnv,
-        POLAR_PRODUCT_ID: " product_live ",
-      }).productId,
-    ).toBe("product_live");
-    expect(isPolarConfigured({})).toBe(false);
+      getOxaPayConfig({
+        OXAPAY_MERCHANT_API_KEY: " merchant_live ",
+        OXAPAY_SANDBOX: "false",
+      }).merchantApiKey,
+    ).toBe("merchant_live");
+    expect(isOxaPayConfigured({})).toBe(false);
   });
 });

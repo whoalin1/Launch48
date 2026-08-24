@@ -32,6 +32,7 @@ type CheckoutPayload = {
 };
 
 type CheckoutResponse = {
+  paymentUrl?: string;
   checkoutId?: string;
   checkoutUrl?: string;
   url?: string;
@@ -86,6 +87,20 @@ function RequiredMark() {
       <span className="sr-only"> (required)</span>
     </>
   );
+}
+
+function isOxaPayCheckoutUrl(value: string | undefined): value is string {
+  if (!value) return false;
+
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "https:" &&
+      (url.hostname === "oxapay.com" || url.hostname.endsWith(".oxapay.com"))
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function BriefForm({ paymentsConfigured }: { paymentsConfigured: boolean }) {
@@ -233,16 +248,16 @@ export function BriefForm({ paymentsConfigured }: { paymentsConfigured: boolean 
 
         setSubmissionError(
           data?.error?.message ??
-            "Checkout could not be opened. Your card was not charged; please try again.",
+            "Checkout could not be opened. No payment was collected; please try again.",
         );
         requestAnimationFrame(() => bannerRef.current?.focus());
         return;
       }
 
-      const checkoutUrl = data?.checkoutUrl ?? data?.url;
-      if (!checkoutUrl || !checkoutUrl.startsWith("https://")) {
+      const checkoutUrl = data?.paymentUrl ?? data?.checkoutUrl ?? data?.url;
+      if (!isOxaPayCheckoutUrl(checkoutUrl)) {
         setSubmissionError(
-          "Checkout did not return a secure Polar URL. Your card was not charged; please try again.",
+          "Checkout did not return a secure OxaPay URL. No payment was collected; please try again.",
         );
         requestAnimationFrame(() => bannerRef.current?.focus());
         return;
@@ -251,7 +266,7 @@ export function BriefForm({ paymentsConfigured }: { paymentsConfigured: boolean 
       window.location.assign(checkoutUrl);
     } catch {
       setSubmissionError(
-        "We could not reach checkout. Your card was not charged; check your connection and try again.",
+        "We could not reach checkout. No payment was collected; check your connection and try again.",
       );
       requestAnimationFrame(() => bannerRef.current?.focus());
     } finally {
@@ -269,7 +284,7 @@ export function BriefForm({ paymentsConfigured }: { paymentsConfigured: boolean 
       {!paymentsConfigured ? (
         <div className="banner show config-banner" role="status">
           Payments not configured. You can review the brief, but this deployment
-          cannot open Polar checkout yet.
+          cannot open OxaPay checkout yet.
         </div>
       ) : null}
 
@@ -548,15 +563,15 @@ export function BriefForm({ paymentsConfigured }: { paymentsConfigured: boolean 
           aria-busy={busy}
         >
           {busy
-            ? "Opening secure checkout…"
+            ? "Opening OxaPay checkout…"
             : canSubmit
-              ? "Continue to secure payment — $349"
+              ? "Pay $349 in crypto"
               : "Payments not configured"}
         </button>
         <p className="note" id="brief-terms-note">
-          $349 is charged by Polar after this brief. The 48-hour clock starts
-          after successful payment + a complete brief. One revision. Full refund
-          if we miss 48 hours.
+          $349 USD is paid in crypto through OxaPay after this brief. The 48-hour
+          clock starts after successful payment + a complete brief. One revision.
+          Full refund if we miss 48 hours.
         </p>
       </div>
     </form>

@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  BRIEF_METADATA_KEYS,
-  briefSchema,
-  fromPolarMetadata,
-  toPolarMetadata,
-} from "../../lib/brief";
+import { briefSchema } from "../../lib/brief";
 
 const validBrief = {
   businessName: "  Acme Studio  ",
@@ -62,35 +57,13 @@ describe("brief validation", () => {
     ).toBe(false);
   });
 
-  it("keeps every Polar metadata string within 500 characters", () => {
-    const brief = briefSchema.parse({ ...validBrief, audience: "a".repeat(500) });
-    const metadata = toPolarMetadata(brief);
-    expect(Object.values(metadata).every((value) => value.length <= 500)).toBe(
-      true,
-    );
+  it("limits long brief fields to 500 characters", () => {
+    expect(
+      briefSchema.safeParse({ ...validBrief, audience: "a".repeat(500) })
+        .success,
+    ).toBe(true);
     expect(
       briefSchema.safeParse({ ...validBrief, audience: "a".repeat(501) }).success,
     ).toBe(false);
-  });
-});
-
-describe("Polar brief metadata", () => {
-  it("round-trips the full normalized brief, including Unicode", () => {
-    const brief = briefSchema.parse({
-      ...validBrief,
-      pitch: "A warm page for caf\u00e9 owners & makers.",
-      colors: "Rugin\u0103 #c4451c",
-    });
-    expect(fromPolarMetadata(toPolarMetadata(brief))).toEqual(brief);
-  });
-
-  it("rejects absent, version-mismatched, and incomplete metadata", () => {
-    expect(fromPolarMetadata(null)).toBeNull();
-    const metadata = toPolarMetadata(briefSchema.parse(validBrief));
-    expect(
-      fromPolarMetadata({ ...metadata, [BRIEF_METADATA_KEYS.schema]: "2" }),
-    ).toBeNull();
-    const { [BRIEF_METADATA_KEYS.pitch]: _pitch, ...missingPitch } = metadata;
-    expect(fromPolarMetadata(missingPitch)).toBeNull();
   });
 });

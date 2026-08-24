@@ -3,18 +3,18 @@ import Link from "next/link";
 
 import { BriefForm } from "@/components/BriefForm";
 import { Footer, Header } from "@/components";
-import { isPolarConfigured } from "@/lib/config";
+import { isOxaPayConfigured } from "@/lib/config";
 import { isOrderStorageConfigured } from "@/lib/orders";
 
 export const metadata: Metadata = {
   title: "Start a brief",
   description:
-    "Complete the Launch48 brief, then continue to Polar’s secure hosted checkout for the one-time $349 payment.",
+    "Complete the Launch48 brief, then continue to OxaPay’s hosted checkout to pay the one-time $349 price in crypto.",
 };
 
 export default function BriefPage() {
   const paymentsConfigured =
-    isPolarConfigured() && isOrderStorageConfigured();
+    isOxaPayConfigured() && isOrderStorageConfigured();
 
   return (
     <>
@@ -24,9 +24,9 @@ export default function BriefPage() {
           <p className="kicker">Work order · LP-48</p>
           <h1>The brief.</h1>
           <p className="lede">
-            Complete the brief first, then continue to Polar’s hosted checkout
-            for the $349 payment. The 48-hour clock starts only after payment
-            succeeds and this brief is complete.
+            Complete the brief first, then continue to OxaPay’s hosted crypto
+            checkout for the $349 payment. The 48-hour clock starts only after
+            payment succeeds and this brief is complete.
           </p>
         </div>
 
@@ -59,7 +59,7 @@ export default function BriefPage() {
                   </div>
                   <div>
                     <dt>Payment</dt>
-                    <dd>Secure Polar checkout after the brief</dd>
+                    <dd>OxaPay crypto checkout after the brief</dd>
                   </div>
                 </dl>
                 <div className="stamp">Brief → payment</div>

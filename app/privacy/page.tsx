@@ -23,18 +23,18 @@ export default function PrivacyPage() {
         <p>
           When you send a brief, we collect the fields you fill in: business
           name, one-sentence pitch, audience, tone, reference URLs, colors,
-          must-have sections, contact email, and an optional domain. Polar also
-          shares payment and checkout information with us, including the
-          checkout identifier, payer details, and whether the $349 USD payment
-          succeeded.
+          must-have sections, contact email, and an optional domain. OxaPay also
+          shares invoice and crypto-payment information with us, including the
+          payment tracking identifier, payer details, and whether the $349 USD
+          payment succeeded.
         </p>
 
         <h2>How the brief and payment are handled</h2>
         <p>
-          Your brief is sent server-side to Polar as checkout metadata so it can
-          be tied to the correct checkout. Payment is processed through
-          Polar&apos;s hosted checkout; Launch48 does not receive or store your
-          full card number.
+          Your brief is stored server-side before checkout and tied to an opaque
+          order ID and OxaPay payment tracking ID. Payment is processed through
+          OxaPay&apos;s hosted crypto checkout; Launch48 never asks for or receives
+          your wallet&apos;s private keys.
         </p>
 
         <h2>What we use it for</h2>
@@ -45,15 +45,16 @@ export default function PrivacyPage() {
           sell this information.
         </p>
 
-        <h2>Where a paid order is stored</h2>
+        <h2>Where an order is stored</h2>
         <p>
-          After Polar confirms a paid order, Launch48 stores the checkout and
-          full brief in Postgres when a database is configured. If no database
-          is configured, the fallback is a GitHub Issue in the public Launch48
-          repository. That issue includes the Polar checkout ID and the full
-          brief—including the contact email—and is publicly visible. Do not put
-          passwords, API keys, or other sensitive personal information in the
-          brief.
+          Launch48 stores the order, OxaPay tracking ID, and full brief in
+          Postgres when a database is configured. If no database is configured,
+          the fallback is a GitHub Issue in the public Launch48 repository. That
+          issue is created before the hosted checkout opens with opaque order
+          identifiers and an encrypted brief. After payment is confirmed, it is
+          updated with the full brief—including the contact email—which is then
+          publicly visible. Do not put passwords, API keys, or other sensitive
+          personal information in the brief.
         </p>
 
         <h2>How long we keep it</h2>

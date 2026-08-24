@@ -2,12 +2,12 @@ import Link from "next/link";
 
 import { FaqList } from "@/components/FaqList";
 import { Footer, Header, PurchaseCta } from "@/components";
-import { isPolarConfigured } from "@/lib/config";
+import { isOxaPayConfigured } from "@/lib/config";
 import { isOrderStorageConfigured } from "@/lib/orders";
 
 export default function HomePage() {
   const paymentsConfigured =
-    isPolarConfigured() && isOrderStorageConfigured();
+    isOxaPayConfigured() && isOrderStorageConfigured();
 
   return (
     <>
@@ -27,8 +27,8 @@ export default function HomePage() {
               <p className="lede">
                 One marketing landing page — hero, proof, features, FAQ, and a
                 call to action — written, designed, and deployed on Vercel. $349,
-                once. Complete the brief first, pay securely through Polar
-                second, and the clock starts only when both are in.
+                once. Complete the brief first, pay $349 in crypto through
+                OxaPay second, and the clock starts only when both are in.
               </p>
               <div className="hero-actions">
                 <PurchaseCta configured={paymentsConfigured} />
@@ -85,9 +85,9 @@ export default function HomePage() {
                 <div className="step-num">02 — Pay</div>
                 <h3>$349, once</h3>
                 <p>
-                  A complete brief continues to Polar’s hosted checkout. No
-                  retainer and no hourly meter; payment confirms your production
-                  slot.
+                  A complete brief continues to OxaPay’s hosted crypto checkout.
+                  No retainer and no hourly meter; a confirmed payment reserves
+                  your production slot.
                 </p>
               </article>
               <article className="step">
@@ -184,10 +184,10 @@ export default function HomePage() {
                 <h3>A productized page, not a project.</h3>
                 <p className="fine">
                   You are buying a defined job: one landing page, shipped in
-                  forty-eight hours. You complete the brief first and pay through
-                  Polar second. The clock starts only after the brief is complete
-                  and the $349 payment succeeds. Miss the clock and you get a full
-                  refund.
+                  forty-eight hours. You complete the brief first and pay $349 in
+                  crypto through OxaPay second. The clock starts only after the
+                  brief is complete and payment succeeds. Miss the clock and you
+                  get a full refund.
                 </p>
                 <p className="fine">
                   After launch, you get one revision round — copy tweaks, section
@@ -254,9 +254,9 @@ export default function HomePage() {
               We’ll make it live.
             </h2>
             <p>
-              Complete the brief, continue to Polar’s hosted checkout, and pay
-              $349 once. The 48-hour clock starts only after payment succeeds and
-              the brief is complete.
+              Complete the brief, continue to OxaPay’s hosted checkout, and pay
+              $349 in crypto once. The 48-hour clock starts only after payment
+              succeeds and the brief is complete.
             </p>
             <div className="cta-actions">
               <PurchaseCta configured={paymentsConfigured} />

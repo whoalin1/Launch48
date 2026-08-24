@@ -1,6 +1,6 @@
 # Launch48
 
-Launch48 is the Next.js App Router site for a $349 productized landing-page design and build. The buyer completes the project brief first, then pays through a Polar-hosted checkout. The 48-hour delivery clock starts only after both the complete brief and cleared payment are present.
+Launch48 is the Next.js App Router site for a $349 productized landing-page design and build. The buyer completes the project brief first, then pays through an OxaPay-hosted crypto invoice. The 48-hour delivery clock starts only after both the complete brief and confirmed payment are present.
 
 Production site: <https://launch48-psi.vercel.app>
 
@@ -20,7 +20,7 @@ On Windows PowerShell, copy the environment template with:
 Copy-Item .env.example .env.local
 ```
 
-Open <http://localhost:3000>. Keep real secrets in `.env.local`; it is ignored by Git. Never put a Polar access token, webhook secret, database URL, or GitHub token in a `NEXT_PUBLIC_*` variable.
+Open <http://localhost:3000>. Keep real secrets in `.env.local`; it is ignored by Git. Never expose the OxaPay Merchant API Key, checkout-state encryption secret, database URL, or GitHub token in a `NEXT_PUBLIC_*` variable.
 
 Useful commands:
 
@@ -33,108 +33,93 @@ npm start
 
 `npm start` serves a completed production build created by `npm run build`.
 
-## Production Polar setup
+## OxaPay merchant setup
 
-Use the production Polar dashboard at <https://polar.sh>. Do not reuse sandbox IDs or credentials. Polar's reference pages for this setup are [Products](https://polar.sh/docs/features/products), [Organization Access Tokens](https://polar.sh/docs/integrate/oat), and [webhook endpoints](https://polar.sh/docs/integrate/webhooks/endpoints).
+Launch48 uses OxaPay's current v1 [Generate Invoice API](https://docs.oxapay.com/api-reference/payment/generate-invoice). Every checkout is a hosted crypto invoice for exactly **$349 USD**; customers choose from the cryptocurrencies enabled for the merchant account.
 
-1. Select the production organization that will receive Launch48 payments.
-2. Go to **Products → Catalogue → New Product** (some Polar accounts label the final control **Create Product**) and create this product exactly:
+1. Sign in at <https://app.oxapay.com> and open **Merchant Service**.
+2. Create a Merchant API Key for Launch48 and copy it immediately. Store it as `OXAPAY_MERCHANT_API_KEY`. This is a server-only secret.
+3. In Merchant Service, enable the cryptocurrencies and networks you want customers to be able to use. OxaPay documents these as the account's [accepted currencies](https://docs.oxapay.com/api-reference/payment/accepted-currencies).
+4. For live charges, set `OXAPAY_SANDBOX=false`. For tests, set `OXAPAY_SANDBOX=true`; OxaPay uses the same v1 invoice endpoint and receives the sandbox flag in each request.
+5. Ensure OxaPay can reach this production callback URL over HTTPS:
 
-   - Name: `Launch48 landing page`
-   - Billing cycle: **One-time purchase**
-   - Pricing type: **Fixed price**
-   - Currency: **USD**
-   - Price: **$349.00**
+   ```text
+   https://launch48-psi.vercel.app/api/webhooks/oxapay
+   ```
 
-3. Save it and leave it active/unarchived. In the Products list, open the product’s `…` menu and choose **Copy Product ID**. Store that UUID as `POLAR_PRODUCT_ID`; it is the product ID, not a price ID or checkout-link ID.
-4. In the same organization, go to **Settings → General**, scroll to **Developers**, and choose **New Token** under Organization Access Tokens. Give it an identifiable name such as `Launch48 Vercel production`, select `checkouts:write` and `checkouts:read`, set an appropriate expiry, create it, and immediately copy the token into `POLAR_ACCESS_TOKEN`. Polar only shows the complete token once. This must be an Organization Access Token from the same organization as the product.
-5. In **Settings → Developers → Webhooks**, choose **Add Endpoint** and configure exactly:
-
-   - URL: `https://launch48-psi.vercel.app/api/webhooks/polar`
-   - Format: **Raw**
-   - Event: **`order.paid` only**
-
-6. Generate or enter a strong webhook secret, save the endpoint, and copy that exact secret into `POLAR_WEBHOOK_SECRET`.
-
-Use the exact endpoint URL shown above and confirm it responds without a redirect; Polar treats a `3xx` webhook response as a failed delivery and does not follow it.
-
-The application creates a fresh hosted checkout for the configured product. Its success URL is generated from the request origin as `/success?checkout_id={CHECKOUT_ID}`; no separate Polar checkout link or static success URL is required.
+The application supplies the callback URL and `/success` return URL when it creates each invoice. There is no product ID or separate webhook secret to configure. OxaPay uses the Merchant API Key as the webhook HMAC secret.
 
 ## Vercel production configuration
 
-In Vercel, switch to team **`whoalin1s-projects`**, open project **`launch48`**, then go to **Settings → Environment Variables**. Add these values to the **Production** environment:
+In Vercel, switch to team **`whoalin1s-projects`**, open project **`launch48`**, then go to **Settings -> Environment Variables**. Add these server-only values to the **Production** environment:
 
 | Variable | Production value |
 | --- | --- |
-| `POLAR_ACCESS_TOKEN` | Production Organization Access Token from the same Polar organization as the product |
-| `POLAR_PRODUCT_ID` | Production ID of `Launch48 landing page` |
-| `POLAR_WEBHOOK_SECRET` | Secret for the production webhook endpoint above |
-| `NEXT_PUBLIC_POLAR_SERVER` | `production` |
+| `OXAPAY_MERCHANT_API_KEY` | Merchant API Key created in OxaPay Merchant Service |
+| `OXAPAY_SANDBOX` | `false` for real crypto payments |
+| `SITE_URL` | `https://launch48-psi.vercel.app` |
 | `DATABASE_URL` | Postgres connection string; strongly recommended |
+| `GITHUB_ISSUES_TOKEN` | Fine-grained Issues token; required only when `DATABASE_URL` is absent |
+| `CHECKOUT_STATE_SECRET` | Strong server-only encryption secret; required with the GitHub Issues fallback |
 
-`NEXT_PUBLIC_POLAR_SERVER` is safe to expose because it contains only the environment name. All other Polar values are server-only secrets.
+If `DATABASE_URL` is absent, configure the GitHub fallback described below with both `GITHUB_ISSUES_TOKEN` and `CHECKOUT_STATE_SECRET`. Generate the encryption secret with a cryptographically secure command such as `openssl rand -hex 32`; do not reuse the OxaPay or GitHub credential.
 
-After adding or changing environment variables, redeploy the latest `main` deployment from Vercel. Environment changes do not alter an already-built deployment. Production is deployed from `main` and Vercel auto-deploys new commits; a manual redeploy is still needed when only environment variables changed.
+After adding or changing environment variables, redeploy the latest `main` deployment. Vercel environment changes do not modify an already-built deployment. Production auto-deploys from `main`, but a manual redeploy is still needed when only environment variables changed.
 
-Before accepting an order, verify that the live brief submits to Polar, the checkout displays the exact product and $349 USD one-time price, a successful payment reaches `/success`, and the paid webhook creates exactly one fulfillment record.
+Before accepting orders, make one end-to-end test in sandbox mode and then switch `OXAPAY_SANDBOX` to `false`, redeploy, and verify that the live hosted invoice shows **349 USD** before sending crypto.
 
-### Order storage
+## Order storage
 
-`DATABASE_URL` is the preferred production storage path. On the first valid paid webhook, the app runs `CREATE TABLE IF NOT EXISTS` for `launch48_orders`; no manual migration is required. Paid deliveries are upserted idempotently by the Polar identifiers, so a duplicate delivery does not create a second order.
+The complete brief must be saved before the browser leaves Launch48 because OxaPay does not store arbitrary brief fields. The checkout route creates an internal order ID and saves the pending brief first, requests the hosted invoice second, then attaches the returned OxaPay `track_id` before returning a payable URL. The signed paid callback promotes that pending record to a paid fulfillment order. Repeated callbacks are handled idempotently.
 
-If `DATABASE_URL` is not set, the app falls back to a GitHub Issue in `whoalin1/Launch48`. Set one of these server-only variables in Vercel:
+`DATABASE_URL` is the recommended production storage path. The application initializes its order table automatically; no separate migration command is required.
 
-- `GITHUB_ISSUES_TOKEN` (preferred), or
-- `GITHUB_TOKEN` (used only when `GITHUB_ISSUES_TOKEN` is absent).
+If `DATABASE_URL` is not set, the app falls back to GitHub Issues in `whoalin1/Launch48`. Set both of these server-only variables in Vercel:
 
-Use a fine-grained GitHub personal access token scoped to repository **`whoalin1/Launch48`** with **Issues: Read and write** permission. The fallback searches for the Polar checkout marker before creating an issue, then opens `Order: {business name}` with the Polar checkout ID and full brief.
+- `GITHUB_ISSUES_TOKEN`
+- `CHECKOUT_STATE_SECRET`
 
-> **Privacy warning:** `whoalin1/Launch48` is a public repository. A fallback GitHub Issue publishes the full project brief and contact email. Use `DATABASE_URL` in production. The GitHub fallback is an emergency option, not the recommended live configuration.
+Use a fine-grained GitHub personal access token limited to repository **`whoalin1/Launch48`** with **Issues: Read and write** permission. Before payment, the fallback issue contains only identifiers and an opaque authenticated-encryption payload produced with `CHECKOUT_STATE_SECRET`; the brief, contact email, and optional domain are not readable in the public issue. Once payment is authoritatively verified, the app decrypts the pending state, updates the issue to the fulfillment title `Order: {business name}`, and publishes the full paid brief for fulfillment.
 
-Do not leave both persistence paths unavailable. A verified paid event cannot become a usable fulfillment record without `DATABASE_URL` or a valid GitHub token.
+> **Privacy warning:** `whoalin1/Launch48` is a public repository. Abandoned or unpaid briefs remain encrypted, but a verified paid order is updated with the full brief, contact email, and optional domain in plaintext. Use `DATABASE_URL` for real customers unless publishing paid-order details is explicitly acceptable.
 
-## Fulfillment flow
+Do not leave both persistence paths unavailable. The brief cannot be recovered safely at callback time without Postgres or the complete GitHub fallback pair: a valid `GITHUB_ISSUES_TOKEN` and `CHECKOUT_STATE_SECRET`.
+
+## Payment and fulfillment flow
 
 1. The customer completes the brief: business name, one-sentence pitch, audience, tone, reference URLs, colors, must-have sections, contact email, and optional domain. Required fields are validated on the server.
-2. `POST /api/checkout` creates the Polar-hosted checkout and ties the full validated brief to its checkout ID.
-3. After payment, Polar redirects to `/success?checkout_id=…`. The success page verifies that checkout against Polar server-side; it does not treat a query string alone as proof of payment.
-4. Polar sends `order.paid` to `POST /api/webhooks/polar`. The handler verifies the Standard Webhooks signature against the untouched raw body and `POLAR_WEBHOOK_SECRET`.
-5. The handler writes an idempotent `launch48_orders` record through `DATABASE_URL`, or uses the GitHub Issue fallback described above, and acknowledges the delivery so Polar does not retry it forever.
-6. Fulfillment uses the contact email supplied in the brief. The 48-hour clock starts only when the brief is complete and payment has cleared. One revision is included; if the 48-hour delivery window is missed, the terms provide a full refund.
+2. `POST /api/checkout` creates an internal order ID and durably stores the pending brief. With the GitHub fallback, the brief is encrypted before it is written to the public issue.
+3. The route requests an OxaPay hosted invoice with `amount: 349`, `currency: "USD"`, the customer's email, and that order ID. It durably attaches the returned OxaPay `track_id` before redirecting the customer to pay in an enabled cryptocurrency.
+4. OxaPay posts status updates to `POST /api/webhooks/oxapay`. The handler validates the `HMAC` header by computing an HMAC-SHA512 signature over the untouched raw POST body with `OXAPAY_MERCHANT_API_KEY`.
+5. A signed callback alone does not fulfill the order. For a paid invoice, the app calls OxaPay's [Payment Information API](https://docs.oxapay.com/api-reference/payment/payment-information) and independently verifies the `track_id`, internal order ID, paid status, **349** amount, **USD** currency, `Launch48 landing page` description, and matching sandbox/production mode.
+6. The app promotes the pending record to a paid order and returns HTTP `200` with `OK` so OxaPay does not keep retrying a successfully handled callback.
+7. `/success` checks payment state server-side. It tells the customer that the 48-hour clock starts once the complete brief and payment are both confirmed, and that fulfillment updates go to the contact email from the brief.
 
-The order record is created by the signed paid webhook, not merely by returning from checkout. Treat the Polar dashboard and the stored order record as the operational source of truth before starting work.
+The order record created from the verified paid callback is the operational signal to start fulfillment. One revision is included; if the 48-hour delivery window is missed, the terms provide a full refund.
 
 ## Missing payment configuration
 
-All four Polar variables are required for live payments. If one is missing or invalid, the customer-facing buy action reports that payments are not configured instead of crashing. That state is a deployment warning, not a checkout substitute; correct the Vercel values and redeploy before taking orders.
+`OXAPAY_MERCHANT_API_KEY` and `OXAPAY_SANDBOX` are required for payment checkout. If either is missing or invalid, the customer-facing buy action reports **Payments not configured** instead of crashing. Correct the Vercel values and redeploy before accepting an order.
 
-## Sandbox setup and payment test
+## Sandbox test
 
-Polar sandbox is isolated from production. It requires a separate sandbox account/organization, product, Organization Access Token, webhook endpoint, product ID, and webhook secret. Production credentials do not work in sandbox and sandbox credentials cannot charge real cards.
+1. Set `OXAPAY_SANDBOX=true` in `.env.local` or a dedicated Vercel Preview environment. Use a test database or a disposable GitHub fallback issue set.
+2. If testing locally, expose the callback route through an HTTPS tunnel; OxaPay cannot post callbacks directly to localhost. Set the generated invoice's callback origin to that public URL.
+3. Start the app and submit a complete brief.
+4. Confirm the OxaPay hosted invoice shows **349 USD**, uses sandbox mode, and offers only the cryptocurrencies enabled in Merchant Service.
+5. Complete the sandbox payment, confirm `/success` reports a verified payment, and confirm exactly one paid order record exists.
+6. Re-deliver the same callback or replay it in the test environment and confirm the existing order is updated rather than duplicated.
+7. For production, set `OXAPAY_SANDBOX=false`, use production persistence, redeploy, and re-check the amount before accepting a real crypto payment.
 
-1. Open <https://sandbox.polar.sh> and create/select the sandbox organization.
-2. Create a separate sandbox product named `Launch48 landing page` with a one-time fixed **$349.00 USD** price. Copy its sandbox product ID.
-3. Under the sandbox organization’s **Settings → General → Developers**, create a separate Organization Access Token with `checkouts:write` and `checkouts:read`.
-4. Create a sandbox webhook in **Raw** format subscribed only to `order.paid`. For a deployed sandbox test, point it at that deployment’s `/api/webhooks/polar`. For local testing, install the [Polar CLI](https://polar.sh/docs/integrate/webhooks/endpoints) and run the listener below; Polar cannot deliver directly to localhost. Use the secret printed by that listener as the local `POLAR_WEBHOOK_SECRET` while it is running.
-
-   ```bash
-   polar listen http://localhost:3000/api/webhooks/polar
-   ```
-5. Put only the sandbox token, product ID, webhook secret, and `NEXT_PUBLIC_POLAR_SERVER=sandbox` in `.env.local` or in a dedicated Vercel Preview deployment. Use a separate test database if `DATABASE_URL` is enabled.
-6. Start the app, submit a complete brief, and pay with card `4242 4242 4242 4242`, any future expiry date, and any valid CVC/billing details.
-7. Confirm the verified success page appears and one order record is created. Re-deliver the same webhook from Polar and confirm it remains one record.
-
-Sandbox customer emails are delivered only to members of that sandbox organization. An address alias such as `you+launch48-test@example.com` works when the underlying address belongs to a member.
-
-Before going live, replace every sandbox value with its production counterpart, set `NEXT_PUBLIC_POLAR_SERVER=production`, and redeploy. Never switch only the server flag while leaving sandbox credentials or the sandbox product ID in place.
+Never use `OXAPAY_SANDBOX=true` as proof that live settlement works. Do not send real cryptocurrency to a sandbox invoice.
 
 ## Routes
 
-- `/` — Launch48 home
-- `/brief` — validated project brief and checkout start
-- `/success` — server-verified payment result
-- `/example` — Fieldnote Coffee example
-- `/privacy` — privacy policy
-- `/terms` — service terms
-- `POST /api/checkout` — validates the brief and creates the hosted checkout
-- `POST /api/webhooks/polar` — verifies `order.paid` and records the order
+- `/` - Launch48 home
+- `/brief` - validated project brief and crypto checkout start
+- `/success` - server-verified payment result
+- `/example` - Fieldnote Coffee example
+- `/privacy` - privacy policy
+- `/terms` - service terms
+- `POST /api/checkout` - validates the brief, saves a pending order, and creates the hosted OxaPay invoice
+- `POST /api/webhooks/oxapay` - verifies OxaPay callbacks and records confirmed paid orders

@@ -6,7 +6,7 @@ const faqs = [
   {
     question: "When does the 48-hour clock start?",
     answer:
-      "After you complete the brief and Polar confirms the $349 payment. Incomplete briefs or unsuccessful payments do not start the clock. Weekends and holidays are counted as working time unless we write otherwise before you pay.",
+      "After you complete the brief and OxaPay confirms the $349 crypto payment. Incomplete briefs or unsuccessful payments do not start the clock. Weekends and holidays are counted as working time unless we write otherwise before you pay.",
   },
   {
     question: "What if you miss 48 hours?",

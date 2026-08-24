@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { Footer, Header } from "@/components";
-import { getCheckoutConfirmation } from "@/lib/polar";
+import { getPaymentConfirmation } from "@/lib/oxapay";
 
 export const metadata: Metadata = {
-  title: "Checkout status — Launch48",
-  description: "Confirm the status of your Launch48 checkout.",
+  title: "Payment status — Launch48",
+  description: "Confirm the status of your Launch48 crypto payment.",
   robots: { index: false, follow: false },
 };
 
@@ -14,11 +14,17 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
-const POLAR_ID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ORDER_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{7,127}$/;
 
 type SuccessPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+type ConfirmationView = {
+  state?: string;
+  status?: string;
+  paid?: boolean;
+  contactEmail?: string | null;
 };
 
 type StatusView = {
@@ -35,6 +41,12 @@ type StatusView = {
   primaryHref: string;
   primaryLabel: string;
 };
+
+function displayStatus(value: string, fallback: string): string {
+  if (!value) return fallback;
+  const readable = value.replaceAll("_", " ");
+  return readable.charAt(0).toUpperCase() + readable.slice(1);
+}
 
 function StatusPage({ view }: { view: StatusView }) {
   return (
@@ -60,14 +72,14 @@ function StatusPage({ view }: { view: StatusView }) {
               {view.note ? <p className="note">{view.note}</p> : null}
             </div>
 
-            <aside className="ticket" aria-label="Checkout status">
+            <aside className="ticket" aria-label="Payment status">
               <div className="ticket-head">
                 <span>{view.ticketLabel}</span>
                 <span>{view.ticketValue}</span>
               </div>
               <div className="ticket-body">
                 <div className="price">
-                  $349 <small>USD · one-time</small>
+                  $349 <small>USD · crypto only</small>
                 </div>
                 <dl>
                   <div>
@@ -94,22 +106,22 @@ function StatusPage({ view }: { view: StatusView }) {
   );
 }
 
-function invalidCheckoutView(reason: "missing" | "invalid"): StatusView {
+function invalidOrderView(reason: "missing" | "invalid"): StatusView {
   return {
-    kicker: "Checkout · Action needed",
-    title: "We need the checkout link.",
+    kicker: "Payment · Action needed",
+    title: "We need the order link.",
     description:
       reason === "missing" ? (
         <p>
-          This page is missing its Polar checkout ID, so it cannot confirm a
+          This page is missing its order ID, so it cannot verify a crypto
           payment.
         </p>
       ) : (
         <p>
-          This checkout ID is not valid, so no payment status was looked up.
+          This order ID is not valid, so no payment status was looked up.
         </p>
       ),
-    ticketLabel: "Checkout status",
+    ticketLabel: "Payment status",
     ticketValue: reason === "missing" ? "Missing ID" : "Invalid ID",
     payment: "Not verified",
     brief: "Return to the brief to continue",
@@ -122,57 +134,50 @@ function invalidCheckoutView(reason: "missing" | "invalid"): StatusView {
 
 export default async function SuccessPage({ searchParams }: SuccessPageProps) {
   const params = await searchParams;
-  const checkoutParam = params.checkout_id;
-  const checkoutId = Array.isArray(checkoutParam)
-    ? checkoutParam[0]
-    : checkoutParam;
+  const orderParam = params.order_id;
+  const orderId = Array.isArray(orderParam) ? orderParam[0] : orderParam;
 
-  if (!checkoutId) {
-    return <StatusPage view={invalidCheckoutView("missing")} />;
+  if (!orderId) {
+    return <StatusPage view={invalidOrderView("missing")} />;
   }
 
-  if (!POLAR_ID_PATTERN.test(checkoutId)) {
-    return <StatusPage view={invalidCheckoutView("invalid")} />;
+  if (!ORDER_ID_PATTERN.test(orderId)) {
+    return <StatusPage view={invalidOrderView("invalid")} />;
   }
 
-  let confirmation: Awaited<ReturnType<typeof getCheckoutConfirmation>>;
+  let confirmation: ConfirmationView;
 
   try {
-    confirmation = await getCheckoutConfirmation(checkoutId);
+    confirmation = (await getPaymentConfirmation(orderId)) as ConfirmationView;
   } catch {
     return (
       <StatusPage
         view={{
-          kicker: "Checkout · Verification",
-          title: "We couldn’t confirm this checkout.",
+          kicker: "Payment · Verification",
+          title: "We couldn’t confirm this payment.",
           description: (
             <p>
-              The payment lookup failed. If you saw a charge, do not pay again;
-              refresh this page and keep your Polar receipt.
+              The payment lookup failed. If you already sent crypto, do not pay
+              again; keep your OxaPay receipt and check this page again.
             </p>
           ),
-          ticketLabel: "Checkout status",
+          ticketLabel: "Payment status",
           ticketValue: "Lookup error",
           payment: "Not verified",
           brief: "Submitted before checkout",
           clock: "Waiting for verified payment",
           stamp: "Check again",
-          primaryHref: `/success?checkout_id=${encodeURIComponent(checkoutId)}`,
+          primaryHref: `/success?order_id=${encodeURIComponent(orderId)}`,
           primaryLabel: "Check again",
         }}
       />
     );
   }
 
-  const polarStatus = String(confirmation.status ?? "").toLowerCase();
+  const state = String(confirmation.state ?? "").toLowerCase();
+  const paymentStatus = String(confirmation.status ?? state).toLowerCase();
 
-  if (
-    confirmation.paid &&
-    confirmation.state === "paid" &&
-    polarStatus === "succeeded"
-  ) {
-    const contactEmail = confirmation.contactEmail;
-
+  if (confirmation.paid === true && state === "paid") {
     return (
       <StatusPage
         view={{
@@ -181,25 +186,28 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
           description: (
             <>
               <p>
-                Your brief was submitted before checkout. The 48-hour clock
-                starts once that brief is complete, and your $349 payment is now
-                confirmed.
+                Your brief was submitted before checkout. Your $349 crypto
+                payment is confirmed, and the 48-hour clock starts once that
+                brief is complete.
               </p>
               <p>
                 We’ll email{" "}
-                <strong>{contactEmail ?? "the contact address in your brief"}</strong>{" "}
+                <strong>
+                  {confirmation.contactEmail ??
+                    "the contact address in your brief"}
+                </strong>{" "}
                 with any questions and the live page.
               </p>
             </>
           ),
           ticketLabel: "Order status",
           ticketValue: "Paid",
-          payment: "Confirmed by Polar",
+          payment: "Confirmed by OxaPay",
           brief: "Submitted before checkout",
           clock: "Starts once the brief is complete",
           stamp: "Payment confirmed",
           note:
-            "Order fulfillment is triggered by a signed Polar webhook; this page verifies the checkout separately.",
+            "This page verifies the payment server-side; fulfillment is also protected by OxaPay’s signed webhook.",
           primaryHref: "/",
           primaryLabel: "Back to Launch48",
         }}
@@ -207,19 +215,19 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
     );
   }
 
-  if (confirmation.state === "not_configured") {
+  if (state === "not_configured") {
     return (
       <StatusPage
         view={{
-          kicker: "Checkout · Configuration",
+          kicker: "Payment · Configuration",
           title: "Payments not configured.",
           description: (
             <p>
-              This server does not have the Polar settings needed to verify a
-              checkout. No paid order is being claimed by this page.
+              This server does not have the OxaPay settings needed to verify a
+              payment. No paid order is being claimed by this page.
             </p>
           ),
-          ticketLabel: "Checkout status",
+          ticketLabel: "Payment status",
           ticketValue: "Unavailable",
           payment: "Not verified",
           brief: "No change",
@@ -232,59 +240,107 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
     );
   }
 
-  if (polarStatus === "failed" || polarStatus === "expired") {
+  if (state === "not_found") {
     return (
       <StatusPage
         view={{
-          kicker: "Checkout · Not completed",
-          title:
-            polarStatus === "expired"
-              ? "This checkout expired."
-              : "This payment failed.",
+          kicker: "Payment · Verification",
+          title: "We couldn’t find this order.",
           description: (
             <p>
-              Polar did not report a succeeded payment for this checkout. No paid
-              Launch48 order has been confirmed, and the 48-hour clock has not
-              started.
+              No stored Launch48 order matches this link, so no crypto payment
+              has been confirmed here.
             </p>
           ),
-          ticketLabel: "Checkout status",
-          ticketValue: polarStatus,
+          ticketLabel: "Payment status",
+          ticketValue: "Order not found",
+          payment: "Not verified",
+          brief: "Not found",
+          clock: "Not started",
+          stamp: "Action needed",
+          primaryHref: "/brief",
+          primaryLabel: "Start a new brief",
+        }}
+      />
+    );
+  }
+
+  if (paymentStatus === "expired" || state === "expired") {
+    return (
+      <StatusPage
+        view={{
+          kicker: "Payment · Not completed",
+          title: "This crypto invoice expired.",
+          description: (
+            <p>
+              OxaPay did not confirm a paid $349 invoice. No paid Launch48 order
+              has been confirmed, and the 48-hour clock has not started.
+            </p>
+          ),
+          ticketLabel: "Payment status",
+          ticketValue: "Expired",
           payment: "Not completed",
           brief: "Submitted before checkout",
           clock: "Not started",
-          stamp: polarStatus,
+          stamp: "Expired",
           primaryHref: "/brief",
-          primaryLabel: "Return to the brief",
+          primaryLabel: "Start a new brief",
         }}
       />
     );
   }
 
   if (
-    confirmation.state === "pending" ||
-    polarStatus === "confirmed" ||
-    polarStatus === "open"
+    state === "pending" ||
+    ["new", "waiting", "paying", "underpaid", "manual_accept"].includes(
+      paymentStatus,
+    )
   ) {
     return (
       <StatusPage
         view={{
-          kicker: "Checkout · Processing",
-          title: "Payment is still processing.",
+          kicker: "Payment · Processing",
+          title: "Payment is not confirmed yet.",
           description: (
             <p>
-              Polar has not returned a succeeded payment status yet. A confirmed
-              or open checkout is not treated as paid, and the 48-hour clock has
-              not started.
+              OxaPay has not reported this invoice as paid. Pending, underpaid,
+              or manually reviewed payments are not treated as paid, and the
+              48-hour clock has not started.
             </p>
           ),
-          ticketLabel: "Checkout status",
-          ticketValue: polarStatus || "Processing",
-          payment: "Awaiting succeeded status",
+          ticketLabel: "Payment status",
+          ticketValue: displayStatus(paymentStatus, "Processing"),
+          payment: "Awaiting paid status",
           brief: "Submitted before checkout",
-          clock: "Starts after payment and a complete brief",
+          clock: "Starts after payment + a complete brief",
           stamp: "Processing",
-          primaryHref: `/success?checkout_id=${encodeURIComponent(checkoutId)}`,
+          primaryHref: `/success?order_id=${encodeURIComponent(orderId)}`,
+          primaryLabel: "Check again",
+        }}
+      />
+    );
+  }
+
+  if (state === "failed") {
+    return (
+      <StatusPage
+        view={{
+          kicker: "Payment · Not completed",
+          title: "This payment is not confirmed.",
+          description: (
+            <p>
+              OxaPay’s current status is not paid, so this page cannot confirm
+              an active paid Launch48 order. If you already sent crypto, do not
+              pay again; keep your OxaPay receipt and check once more.
+            </p>
+          ),
+          ticketLabel: "Payment status",
+          ticketValue: displayStatus(paymentStatus, "Not paid"),
+          payment: "Not confirmed",
+          brief: "Submitted before checkout",
+          clock: "Not started by this status",
+          stamp: "Not paid",
+          primaryHref: `/success?order_id=${encodeURIComponent(orderId)}`,
           primaryLabel: "Check again",
         }}
       />
@@ -294,22 +350,22 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
   return (
     <StatusPage
       view={{
-        kicker: "Checkout · Verification",
-        title: "We couldn’t confirm this checkout.",
+        kicker: "Payment · Verification",
+        title: "We couldn’t confirm this payment.",
         description: (
           <p>
-            We could not verify a succeeded $349 Launch48 payment for this
-            checkout. If you saw a charge, do not pay again; refresh this page and
-            keep your Polar receipt.
+            We could not verify a paid $349 Launch48 crypto invoice for this
+            order. If you already sent crypto, do not pay again; keep your OxaPay
+            receipt and check this page again.
           </p>
         ),
-        ticketLabel: "Checkout status",
+        ticketLabel: "Payment status",
         ticketValue: "Not verified",
         payment: "Not confirmed",
         brief: "Submitted before checkout",
         clock: "Waiting for verified payment",
         stamp: "Check again",
-        primaryHref: `/success?checkout_id=${encodeURIComponent(checkoutId)}`,
+        primaryHref: `/success?order_id=${encodeURIComponent(orderId)}`,
         primaryLabel: "Check again",
       }}
     />

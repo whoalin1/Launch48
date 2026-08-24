@@ -29,9 +29,9 @@ export default function TermsPage() {
 
         <h2>Payment</h2>
         <p>
-          Payment is collected through Polar&apos;s hosted checkout. An order is
-          accepted only after the $349 payment has cleared and the brief is
-          complete.
+          The $349 USD price is paid only in supported cryptocurrency through
+          OxaPay&apos;s hosted checkout. An order is accepted only after OxaPay
+          confirms the payment as paid and the brief is complete.
         </p>
 
         <h2>When the 48 hours start</h2>

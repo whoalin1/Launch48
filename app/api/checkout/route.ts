@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
 
 import { briefFieldErrors, briefSchema } from "@/lib/brief";
-import { PaymentsConfigurationError } from "@/lib/config";
+import { isOxaPayConfigured, PaymentsConfigurationError } from "@/lib/config";
 import {
   isOrderStorageConfigured,
   OrderStorageConfigurationError,
 } from "@/lib/orders";
 import {
   createHostedCheckout,
-  PolarProductConfigurationError,
-} from "@/lib/polar";
+  OxaPayApiError,
+  OxaPayOfferMismatchError,
+} from "@/lib/oxapay";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!isOrderStorageConfigured()) {
+  if (!isOxaPayConfigured() || !isOrderStorageConfigured()) {
     return errorResponse(
       503,
       "payments_not_configured",
@@ -57,11 +58,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const origin = new URL(request.url).origin;
-    const checkout = await createHostedCheckout(parsed.data, origin);
+    const checkout = await createHostedCheckout(parsed.data, request.url);
     return NextResponse.json(
       {
         checkoutId: checkout.checkoutId,
+        orderId: checkout.orderId,
+        trackId: checkout.trackId,
         checkoutUrl: checkout.url,
         url: checkout.url,
       },
@@ -78,21 +80,22 @@ export async function POST(request: Request) {
         "Payments are not configured yet. Please try again later.",
       );
     }
-    if (error instanceof PolarProductConfigurationError) {
+    if (error instanceof OxaPayOfferMismatchError) {
       return errorResponse(
         503,
         "payments_not_configured",
-        "The payment product is not configured for $349 USD yet.",
+        "The crypto payment is not configured for $349 USD yet.",
       );
     }
 
-    console.error("[Launch48 checkout] Polar checkout creation failed.", {
+    console.error("[Launch48 checkout] OxaPay invoice creation failed.", {
       error: errorName(error),
+      providerUnavailable: error instanceof OxaPayApiError,
     });
     return errorResponse(
       502,
       "checkout_unavailable",
-      "Checkout is temporarily unavailable. No charge was made.",
+      "Crypto checkout is temporarily unavailable. No charge was made.",
     );
   }
 }

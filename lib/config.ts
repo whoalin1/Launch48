@@ -1,46 +1,37 @@
-export type PolarServer = "sandbox" | "production";
-
-export type PolarConfig = {
-  accessToken: string;
-  productId: string;
-  webhookSecret: string;
-  server: PolarServer;
+export type OxaPayConfig = {
+  merchantApiKey: string;
+  sandbox: boolean;
 };
 
 type Environment = Record<string, string | undefined>;
 
-export type PolarConfigInspection =
-  | { configured: true; config: PolarConfig; problems: [] }
+export type OxaPayConfigInspection =
+  | { configured: true; config: OxaPayConfig; problems: [] }
   | { configured: false; config: null; problems: string[] };
-
-const REQUIRED_POLAR_ENV = [
-  "POLAR_ACCESS_TOKEN",
-  "POLAR_PRODUCT_ID",
-  "POLAR_WEBHOOK_SECRET",
-  "NEXT_PUBLIC_POLAR_SERVER",
-] as const;
 
 function nonEmpty(value: string | undefined): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
 }
 
-export function inspectPolarConfig(
+/**
+ * Inspect payment configuration without throwing. Server components use this
+ * to render an honest disabled CTA when the merchant account is not ready.
+ */
+export function inspectOxaPayConfig(
   env: Environment = process.env,
-): PolarConfigInspection {
-  const values = Object.fromEntries(
-    REQUIRED_POLAR_ENV.map((key) => [key, nonEmpty(env[key])]),
-  ) as Record<(typeof REQUIRED_POLAR_ENV)[number], string | null>;
+): OxaPayConfigInspection {
+  const merchantApiKey = nonEmpty(env.OXAPAY_MERCHANT_API_KEY);
+  const sandboxValue = nonEmpty(env.OXAPAY_SANDBOX);
+  const problems: string[] = [];
 
-  const problems = REQUIRED_POLAR_ENV.filter((key) => !values[key]).map(
-    (key) => `Missing ${key}`,
-  );
-
-  const server = values.NEXT_PUBLIC_POLAR_SERVER;
-  if (server && server !== "sandbox" && server !== "production") {
-    problems.push(
-      "NEXT_PUBLIC_POLAR_SERVER must be either sandbox or production",
-    );
+  if (!merchantApiKey) {
+    problems.push("Missing OXAPAY_MERCHANT_API_KEY");
+  }
+  if (!sandboxValue) {
+    problems.push("Missing OXAPAY_SANDBOX");
+  } else if (sandboxValue !== "true" && sandboxValue !== "false") {
+    problems.push("OXAPAY_SANDBOX must be either true or false");
   }
 
   if (problems.length > 0) {
@@ -50,10 +41,8 @@ export function inspectPolarConfig(
   return {
     configured: true,
     config: {
-      accessToken: values.POLAR_ACCESS_TOKEN as string,
-      productId: values.POLAR_PRODUCT_ID as string,
-      webhookSecret: values.POLAR_WEBHOOK_SECRET as string,
-      server: server as PolarServer,
+      merchantApiKey: merchantApiKey as string,
+      sandbox: sandboxValue === "true",
     },
     problems: [],
   };
@@ -70,14 +59,14 @@ export class PaymentsConfigurationError extends Error {
   }
 }
 
-export function getPolarConfig(env: Environment = process.env): PolarConfig {
-  const inspection = inspectPolarConfig(env);
+export function getOxaPayConfig(env: Environment = process.env): OxaPayConfig {
+  const inspection = inspectOxaPayConfig(env);
   if (!inspection.configured) {
     throw new PaymentsConfigurationError(inspection.problems);
   }
   return inspection.config;
 }
 
-export function isPolarConfigured(env: Environment = process.env): boolean {
-  return inspectPolarConfig(env).configured;
+export function isOxaPayConfigured(env: Environment = process.env): boolean {
+  return inspectOxaPayConfig(env).configured;
 }
