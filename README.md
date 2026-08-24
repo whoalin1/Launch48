@@ -85,6 +85,8 @@ Use a fine-grained GitHub personal access token limited to repository **`whoalin
 
 Do not leave both persistence paths unavailable. The brief cannot be recovered safely at callback time without Postgres or the complete GitHub fallback pair: a valid `GITHUB_ISSUES_TOKEN` and `CHECKOUT_STATE_SECRET`.
 
+Keep the selected storage path and `CHECKOUT_STATE_SECRET` stable while invoices are pending and through OxaPay's webhook-retry window. Before switching from GitHub Issues to Postgres or rotating the encryption secret, let pending invoices expire or migrate their encrypted state so a later paid callback can still recover the brief.
+
 ## Payment and fulfillment flow
 
 1. The customer completes the brief: business name, one-sentence pitch, audience, tone, reference URLs, colors, must-have sections, contact email, and optional domain. Required fields are validated on the server.
