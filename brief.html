@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Start a brief — Launch48</title>
+  <meta name="description" content="Fill the Launch48 brief. Business name, pitch, audience, tone, references, colors, sections, and contact email." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,800&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;0,9..144,900;1,9..144,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/site.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%23c4451c' width='32' height='32'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='11' font-family='Georgia' fill='%23efe8da'%3E48%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="wordmark" href="index.html"><strong>Launch48</strong><span>launch48.xyz</span></a>
+      <button class="menu-toggle" type="button" data-menu aria-expanded="false" aria-controls="nav">Menu</button>
+      <nav class="nav" id="nav" data-nav>
+        <a href="index.html#how">How it works</a>
+        <a href="index.html#included">Included</a>
+        <a href="index.html#price">Price</a>
+        <a href="example/index.html">Example</a>
+        <a class="btn" href="brief.html">Start a brief</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap page-intro">
+      <p class="kicker">Work order · LP-48</p>
+      <h1>The brief.</h1>
+      <p class="lede">Eight fields. The clock does not start until this is complete and payment is in. This preview does not take payment.</p>
+    </div>
+
+    <div class="wrap form-shell">
+      <form class="brief" novalidate>
+        <div class="banner" data-preview-banner tabindex="-1" role="status">Preview mode — payments not wired. Your brief was not sent and no charge was made.</div>
+
+        <div class="field">
+          <label for="business">Business name</label>
+          <input id="business" name="business" type="text" required placeholder="e.g. Fieldnote Coffee" autocomplete="organization" />
+        </div>
+        <div class="field">
+          <label for="pitch">One-sentence pitch</label>
+          <textarea id="pitch" name="pitch" required placeholder="What you sell, to whom, and why they should care."></textarea>
+        </div>
+        <div class="field">
+          <label for="audience">Audience</label>
+          <textarea id="audience" name="audience" required placeholder="Who this page is for. Be specific: role, context, what they already tried."></textarea>
+        </div>
+        <div class="field">
+          <label for="tone">Tone</label>
+          <select id="tone" name="tone" required>
+            <option value="">Choose a register</option>
+            <option>Quiet and editorial</option>
+            <option>Direct and commercial</option>
+            <option>Warm and neighborly</option>
+            <option>Technical and precise</option>
+            <option>Playful but grown-up</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="refs">Reference URLs</label>
+          <textarea id="refs" name="refs" placeholder="Sites you like — or dislike. One URL per line, with a note if you want."></textarea>
+        </div>
+        <div class="field">
+          <label for="colors">Colors</label>
+          <input id="colors" name="colors" type="text" placeholder="Existing palette, or ‘set something temporary’" />
+        </div>
+        <div class="field">
+          <label for="sections">Must-have sections</label>
+          <textarea id="sections" name="sections" placeholder="Hero, proof, features, FAQ, and CTA are the default. Add anything that must appear."></textarea>
+        </div>
+        <div class="field">
+          <label for="email">Contact email</label>
+          <input id="email" name="email" type="email" required placeholder="you@company.com" autocomplete="email" />
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-accent" type="submit">Submit brief</button>
+          <p class="note">$349 after this preview. 48h starts on complete brief + payment. One revision. Full refund if we miss 48 hours.</p>
+        </div>
+      </form>
+
+      <aside>
+        <div class="ticket">
+          <div class="ticket-head"><span>Checklist</span><span>Required</span></div>
+          <div class="ticket-body">
+            <dl>
+              <div><dt>Name + pitch</dt><dd>So the headline can be specific</dd></div>
+              <div><dt>Audience</dt><dd>So the page speaks to one person</dd></div>
+              <div><dt>Email</dt><dd>So we can send the live URL</dd></div>
+              <div><dt>Payment</dt><dd>Not collected on this preview</dd></div>
+            </dl>
+            <div class="stamp">Preview only</div>
+          </div>
+        </div>
+        <p class="note" style="margin-top:1.2rem;">Need the rules in writing? See <a href="terms.html">terms</a> and <a href="privacy.html">privacy</a>.</p>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <span>Launch48 · launch48.xyz</span>
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+      </div>
+    </div>
+  </footer>
+  <script src="js/site.js"></script>
+</body>
+</html>
