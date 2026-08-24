@@ -8,3 +8,5 @@ coverage/
 .env.*
 !.env.example
 *.tsbuildinfo
+.superdesign/tmp/
+.superdesign/website/

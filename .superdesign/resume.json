@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "/example": {
+      "targetKind": "existing-ui",
+      "projectId": "ad439e3f-8338-4d36-9e8d-d262df2a7df3",
+      "baselineDraftId": "9dbc146a-db38-4663-9286-27e317afa54b",
+      "activeDraftId": "9dbc146a-db38-4663-9286-27e317afa54b",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "860e224e-c05d-4298-8ccc-9f0e0f513308",
+        "app-example-fieldnote-logo",
+        "a910cfaa-b582-4e93-b3d0-863b9e03ef02"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "app-example-fieldnote-logo",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/ad439e3f-8338-4d36-9e8d-d262df2a7df3/brand-assets/app-example-fieldnote-logo/logo.svg",
+          "sourcePath": "public/fieldnote-mark.svg"
+        }
+      },
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "app/example/page.tsx",
+        "app/example/example.module.css",
+        "app/example/layout.tsx",
+        "app/layout.tsx",
+        "app/globals.css",
+        "css/site.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "5219f774e9806a1b2a6066eb889b29cf014dc8f66a58338d68196674c8f5f722",
+        "app/example/page.tsx": "43568e8f29c4dc2dbc2b71f0869d5017e839e1115cfb0c334d580643782f5c64",
+        "app/example/example.module.css": "4f4e5d12aee2f93c3640108c4b2a73032674f27d21abcff19fc8c6a97b27aa48",
+        "app/example/layout.tsx": "7801d8f01c3aa7733e4699ca1ccfa0b7dccfb1e6519ee158d6a5b416497080cf",
+        "app/layout.tsx": "7e3d2c4ab6e6d04732be5f3b1a055ea2ce412c24a726e8ceccf1bc757904462d",
+        "app/globals.css": "7c94268d790c0a64be9d4c27d0bdaf2a599a56e64cd07a6c5144e4ac39565f26",
+        "css/site.css": "45bf02d9c7e97a82782e18e8978607531391b4c7428c7d6ab25e62c84f2b6609"
+      },
+      "components": [
+        {
+          "name": "FieldnoteHeader",
+          "id": "31ba9169-114e-489f-8fb4-7b17b3ccdc20",
+          "sourcePath": "app/example/page.tsx",
+          "logoAssetKey": "app-example-fieldnote-logo",
+          "currentVersion": 2
+        },
+        {
+          "name": "FieldnoteFooter",
+          "id": "9ac8dbd9-0a65-47c6-9468-685c5efc22f4",
+          "sourcePath": "app/example/page.tsx",
+          "currentVersion": 2
+        }
+      ],
+      "drafts": {
+        "9dbc146a-db38-4663-9286-27e317afa54b": {
+          "title": "Fieldnote Coffee - Launch48 Refinement",
+          "visualDirection": "line-free paper/ink/rust editorial conversion page",
+          "currentVersion": 2
+        }
+      },
+      "updatedAt": "2026-08-24T20:44:53.5927035Z"
+    }
+  }
+}
